@@ -745,14 +745,15 @@ void OpenSetting()
 		CheckRadioButton(hSetting, IDC_RADIO_NORMAL, IDC_RADIO_MAXIMIZE, IDC_RADIO_NORMAL);
 	else
 		CheckRadioButton(hSetting, IDC_RADIO_NORMAL, IDC_RADIO_MAXIMIZE, IDC_RADIO_MAXIMIZE);
-	if (TraySave.aMode[iProject] == ACCENT_DISABLED)
+	/*if (TraySave.aMode[iProject] == ACCENT_DISABLED)
 		CheckRadioButton(hSetting, IDC_RADIO_DEFAULT, IDC_RADIO_ACRYLIC, IDC_RADIO_DEFAULT);
 	else if (TraySave.aMode[iProject] == ACCENT_ENABLE_TRANSPARENTGRADIENT)
 		CheckRadioButton(hSetting, IDC_RADIO_DEFAULT, IDC_RADIO_ACRYLIC, IDC_RADIO_TRANSPARENT);
 	else if (TraySave.aMode[iProject] == ACCENT_ENABLE_BLURBEHIND)
 		CheckRadioButton(hSetting, IDC_RADIO_DEFAULT, IDC_RADIO_ACRYLIC, IDC_RADIO_BLURBEHIND);
 	else if (TraySave.aMode[iProject] == ACCENT_ENABLE_ACRYLICBLURBEHIND)
-		CheckRadioButton(hSetting, IDC_RADIO_DEFAULT, IDC_RADIO_ACRYLIC, IDC_RADIO_ACRYLIC);
+		CheckRadioButton(hSetting, IDC_RADIO_DEFAULT, IDC_RADIO_ACRYLIC, IDC_RADIO_ACRYLIC);*/
+	CheckRadioButton(hSetting, IDC_RADIO_DEFAULT, IDC_RADIO_ACRYLIC, IDC_RADIO_DEFAULT);
 	if (TraySave.iPos == 0)
 		CheckRadioButton(hSetting, IDC_RADIO_LEFT, IDC_RADIO_RIGHT, IDC_RADIO_LEFT);
 	else if (TraySave.iPos == 1)
@@ -4375,7 +4376,8 @@ INT_PTR CALLBACK MainProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		else if (wParam == 6)//处理任务栏图标与信息窗口
 		{
-			if (TraySave.bTrayStyle)
+			if(1)
+			//if (TraySave.bTrayStyle)
 			{
 				if ((TraySave.iPos != 0 || TraySave.bMonitor) && hWin11UI == NULL && rovi.dwBuildNumber < 22000)
 				{
@@ -4814,14 +4816,8 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 		}
 		else if (LOWORD(wParam) == IDCANCEL)
 		{
-			/*
-						SendMessage(hMain, WM_TIMER, 11, 1000);
-						DestroyWindow(hDlg);
-						return (INT_PTR)TRUE;
-			*/
-			//			SendMessage(hReBarWnd, WM_SETREDRAW, TRUE, 0);
-			bRealClose = TRUE;
-			SendMessage(hMain, WM_CLOSE, NULL, NULL);
+			DestroyWindow(hDlg);
+			hSetting = NULL;
 			return (INT_PTR)TRUE;
 		}
 		else if (LOWORD(wParam) == IDC_CLOSE)

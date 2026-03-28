@@ -412,6 +412,33 @@ void WriteReg()//写入设置
 		CloseHandle(hFile);
 	}
 }
+DWORD GetTrafficThresholdUnit()
+{
+	int iUnit = LOWORD(TraySave.iUnit);
+	if (iUnit == 1)
+		return 1024;
+	if (iUnit == 2)
+		return 1048576;
+	return 1;
+}
+DWORD GetTrafficThresholdValue(HWND hDlg, int iCtrl)
+{
+	ULONGLONG ullValue = GetDlgItemInt(hDlg, iCtrl, NULL, 0);
+	ullValue *= GetTrafficThresholdUnit();
+	if (ullValue > MAXDWORD)
+		return MAXDWORD;
+	return (DWORD)ullValue;
+}
+void UpdateTrafficThresholdEdit(HWND hDlg)
+{
+	BOOL bOldSettingInit = bSettingInit;
+	DWORD dwUnit = GetTrafficThresholdUnit();
+	bSettingInit = TRUE;
+	SetDlgItemInt(hDlg, IDC_EDIT1, TraySave.dNumValues[0] / dwUnit, 0);
+	SetDlgItemInt(hDlg, IDC_EDIT2, TraySave.dNumValues[1] / dwUnit, 0);
+	SetDlgItemInt(hDlg, IDC_EDIT9, TraySave.dNumValues[8] / dwUnit, 0);
+	bSettingInit = bOldSettingInit;
+}
 void GetShellAllWnd()
 {
 	while (IsWindow(hTray) == FALSE)
@@ -806,15 +833,13 @@ void OpenSetting()
 	SendDlgItemMessage(hSetting, IDC_SLIDER_ALPHA_B, TBM_SETPOS, TRUE, bAlphaB);
 	SendDlgItemMessage(hSetting, IDC_CHECK_AUTORUN, BM_SETCHECK, AutoRun(FALSE, FALSE, szAppName), NULL);
 	bSettingInit = TRUE;
-	SetDlgItemInt(hSetting, IDC_EDIT1, TraySave.dNumValues[0] / 1048576, 0);
-	SetDlgItemInt(hSetting, IDC_EDIT2, TraySave.dNumValues[1] / 1048576, 0);
+	UpdateTrafficThresholdEdit(hSetting);
 	SetDlgItemInt(hSetting, IDC_EDIT3, TraySave.dNumValues[2], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT4, TraySave.dNumValues[3], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT5, TraySave.dNumValues[4], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT6, TraySave.dNumValues[5], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT7, TraySave.dNumValues[6], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT8, TraySave.dNumValues[7], 0);
-	SetDlgItemInt(hSetting, IDC_EDIT9, TraySave.dNumValues[8] / 1048576, 0);
 	SetDlgItemInt(hSetting, IDC_EDIT10, TraySave.dNumValues[9], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT11, TraySave.dNumValues[10], 0);
 	SetDlgItemInt(hSetting, IDC_EDIT12, TraySave.dNumValues[11], 0);
@@ -2223,13 +2248,40 @@ void AdjustWindowPos()//设置信息窗口位置大小
 		}
 	}
 }
-void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit, int iUnit)
+void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit, int iUnit, BYTE* pLastUnit)
 {
+	const ULONG64 uThresholds[5] = { 1,1024,1048576,1073741824,1099511627776 };
+	const ULONG64 uThresholdsBit[5] = { 1,1000,1000000,1000000000,1000000000000 };
+	const ULONG64* pThresholds = bBit ? uThresholdsBit : uThresholds;
+	int iDisplayUnit = iUnit;
 	if (bBit)
 		uByte *= 8;
-	if (((uByte < 1024 && !bBit) || (uByte < 1000 && bBit)) && iUnit==0)
+	if (iUnit == 0 && pLastUnit)
+	{
+		iDisplayUnit = 0;
+		for (int i = 1; i < 5; i++)
+		{
+			if (uByte * 10 >= pThresholds[i] * 8 || (*pLastUnit == i && uByte * 2 >= pThresholds[i]))
+				iDisplayUnit = i;
+			else
+				break;
+		}
+	}
+	else if (iUnit == 0)
+	{
+		iDisplayUnit = 0;
+		if (uByte * 10 >= pThresholds[4] * 8)
+			iDisplayUnit = 4;
+		else if (uByte * 10 >= pThresholds[3] * 8)
+			iDisplayUnit = 3;
+		else if (uByte * 10 >= pThresholds[2] * 8)
+			iDisplayUnit = 2;
+		else if (uByte * 10 >= pThresholds[1] * 8)
+			iDisplayUnit = 1;
+	}
+	if (iDisplayUnit == 0)
 		wsprintf(sz, L"%dB", uByte);
-	else if (((uByte < 1048576 && !bBit) || (uByte < 1000000 && bBit)) && iUnit != 2)
+	else if (iDisplayUnit == 1)
 	{
 		ULONG64 k_byte;
 		if (bBit)
@@ -2248,7 +2300,7 @@ void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit, int iUnit)
 			wsprintf(sz, L"%d.%dK", k_byte / 100, k_byte % 100);
 		}
 	}
-	else if ((uByte < 1073741824 && !bBit) || (uByte < 1000000000 && bBit))
+	else if (iDisplayUnit == 2)
 	{
 		ULONG64 m_byte;
 		if (bBit)
@@ -2265,7 +2317,7 @@ void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit, int iUnit)
 		else
 			wsprintf(sz, L"%d.%dM", m_byte / 100, m_byte % 100);
 	}
-	else if ((uByte < 1099511627776 && !bBit) || (uByte < 1000000000000 && bBit))
+	else if (iDisplayUnit == 3)
 	{
 		ULONG64 g_byte;
 		if (bBit)
@@ -2299,6 +2351,8 @@ void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit, int iUnit)
 		else
 			wsprintf(sz, L"%d.%dT", t_byte / 100, t_byte % 100);
 	}
+	if (pLastUnit)
+		*pLastUnit = (BYTE)iDisplayUnit;
 	if (bBit)
 		lstrlwr(sz, lstrlen(sz));
 }
@@ -2581,18 +2635,18 @@ INT_PTR CALLBACK TaskTipsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 					DrawText(mdc, traffic[i].IP4, lstrlen(traffic[i].IP4), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 					rc.left = crc.right * 57 / 100;
 					rc.right = crc.right * 66 / 100 - 2;
-					GetTrafficStr(sz, traffic[i].in_bytes, HIWORD(TraySave.iUnit));
+					GetTrafficStr(sz, traffic[i].in_bytes, HIWORD(TraySave.iUnit), 0, &traffic[i].in_bytes_unit);
 					DrawText(mdc, sz, lstrlen(sz), &rc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
-					GetTrafficStr(sz, traffic[i].in_byte, HIWORD(TraySave.iUnit));
+					GetTrafficStr(sz, traffic[i].in_byte, HIWORD(TraySave.iUnit), 0, &traffic[i].in_byte_unit);
 					rc.left = crc.right * 66 / 100 + 2;
 					rc.right = crc.right * 78 / 100-2;
 					DrawText(mdc, L"↓:", 2, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 					DrawText(mdc, sz, lstrlen(sz), &rc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
 					rc.left = crc.right * 78 / 100 + 2;
 					rc.right = crc.right * 87 / 100 - 2;
-					GetTrafficStr(sz, traffic[i].out_bytes, HIWORD(TraySave.iUnit));
+					GetTrafficStr(sz, traffic[i].out_bytes, HIWORD(TraySave.iUnit), 0, &traffic[i].out_bytes_unit);
 					DrawText(mdc, sz, lstrlen(sz), &rc, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
-					GetTrafficStr(sz, traffic[i].out_byte, HIWORD(TraySave.iUnit));
+					GetTrafficStr(sz, traffic[i].out_byte, HIWORD(TraySave.iUnit), 0, &traffic[i].out_byte_unit);
 					rc.left = crc.right * 87 / 100 + 2;
 					rc.right = crc.right - 5;
 					DrawText(mdc, L"↑:", 2, &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
@@ -3159,7 +3213,7 @@ void DrawTraffic(HDC mdc, LPRECT lpRect, ULONG64 dwByte, BOOL bInOut)
 	else
 		rgb = TraySave.cMonitorColor[3];
 	SetTextColor(mdc, rgb);
-	GetTrafficStr(sz, dwByte, HIWORD(TraySave.iUnit),LOWORD(TraySave.iUnit));
+	GetTrafficStr(sz, dwByte, HIWORD(TraySave.iUnit), 0, &bLastTrafficDisplayUnit[bInOut ? 0 : 1]);
 	DrawShadowText(mdc, szT, lstrlen(szT), lpRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 	DrawShadowText(mdc, sz, lstrlen(sz), lpRect, DT_RIGHT | DT_VCENTER | DT_SINGLELINE, bColor, bShadow);
 }
@@ -4536,9 +4590,10 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			if (LOWORD(wParam) >= IDC_EDIT1 && LOWORD(wParam) <= IDC_EDIT12)
 			{
 				int index = LOWORD(wParam) - IDC_EDIT1;
-				TraySave.dNumValues[index] = GetDlgItemInt(hDlg, LOWORD(wParam), NULL, 0);
 				if (index == 0 || index == 1 || index == 8)
-					TraySave.dNumValues[index] *= 1048576;
+					TraySave.dNumValues[index] = GetTrafficThresholdValue(hDlg, LOWORD(wParam));
+				else
+					TraySave.dNumValues[index] = GetDlgItemInt(hDlg, LOWORD(wParam), NULL, 0);
 				SetTimer(hDlg, 3, 500, NULL);
 			}
 			else if (LOWORD(wParam) >= IDC_EDIT24 && LOWORD(wParam) <= IDC_EDIT26)
@@ -4621,6 +4676,7 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 				TraySave.iUnit = 2;
 			if (IsDlgButtonChecked(hDlg, IDC_RADIO_BIT))
 				TraySave.iUnit |= 0x10000;
+			UpdateTrafficThresholdEdit(hDlg);
 			WriteReg();
 		}
 		if (LOWORD(wParam) == IDC_RADIO_NORMAL || LOWORD(wParam) == IDC_RADIO_MAXIMIZE)

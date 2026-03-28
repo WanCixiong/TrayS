@@ -79,6 +79,10 @@ typedef struct _TRAFFIC
 	ULONG64 out_bytes;
 	ULONG64 in_byte;
 	ULONG64 out_byte;	
+	BYTE in_bytes_unit;
+	BYTE out_bytes_unit;
+	BYTE in_byte_unit;
+	BYTE out_byte_unit;
 	PWCHAR FriendlyName;
 	PCHAR AdapterName;
 	WCHAR IP4[16];
@@ -259,7 +263,7 @@ TRAYSAVE TraySave = {
 	116,
 	{ ACCENT_ENABLE_TRANSPARENTGRADIENT,ACCENT_ENABLE_BLURBEHIND } ,
 	{ 0x00111111,0x66000000 },{ 255,255 } ,
-	{ 1 * 1024 * 1024,20 * 1024 * 1024,66,96,81,96,61,88,98 * 1048576,88,0,0 } ,
+	{ 512 * 1024,1 * 1024 * 1024,66,96,81,96,61,88,98 * 1048576,88,0,0 } ,
 	FALSE,
 	1,
 	2,
@@ -327,6 +331,7 @@ int wDisk;//硬盘流量宽度
 int wTime;//时间宽度
 int wPrice;//行情宽度
 int wHeight;//监控字符高度
+BYTE bLastTrafficDisplayUnit[2] = { 0,0 };
 POINT pTime;//秒位置
 HFONT hFont;//监控窗口字体
 BOOL bSettingInit=FALSE;//设置在初始化
@@ -529,6 +534,6 @@ void LoadTemperatureDLL();//加载DLL
 void SetWH();//计算监控窗口高宽
 int GetProcessMemUsage();//获取内存使用大小
 void GetProcessCpuUsage();//获取进程CPU使用率
-void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit,int iUnit=0);//流量转字符串
+void GetTrafficStr(WCHAR* sz, ULONG64 uByte, BOOL bBit,int iUnit=0, BYTE* pLastUnit=NULL);//流量转字符串
 void ShowSelectMenu(BOOL bNet);//显示网卡/硬盘菜单
 void DrawPrice(HDC mdc, LPRECT crc, float fLast, float fOpen, WCHAR* szLast, int iPriceUpDown);//绘制行情
